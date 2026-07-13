@@ -705,7 +705,7 @@ pub(crate) fn bpf_prog_test_run_raw_tp(
 
 /// Run a loaded tracing program through the kernel's synthetic fentry/fexit
 /// test path.
-pub(crate) fn bpf_prog_test_run_tracing(prog_fd: BorrowedFd<'_>) -> Result<(), SyscallError> {
+pub(crate) fn bpf_prog_test_run_tracing(prog_fd: BorrowedFd<'_>) -> Result<u32, SyscallError> {
     let mut attr = unsafe { mem::zeroed::<bpf_attr>() };
     // The tracing test-run handler uses a fixed synthetic call sequence instead
     // of caller-provided input. It rejects non-zero flags, CPU, and batch size,
@@ -715,11 +715,11 @@ pub(crate) fn bpf_prog_test_run_tracing(prog_fd: BorrowedFd<'_>) -> Result<(), S
     test.prog_fd = prog_fd.as_raw_fd() as u32;
 
     invoke_prog_test_run(&mut attr)?;
-    // For fentry/fexit, the tracing test-run handler writes 0 to attr.test.retval
-    // after the fixed synthetic call sequence succeeds. That value carries no
-    // extra information beyond syscall success.
+    // The handler writes the result of the fixed synthetic call sequence to
+    // attr.test.retval. For fentry/fexit this is always 0, but for fmod_ret it
+    // encodes the modify-return result: `(side_effect << 16) | ret`.
     // https://github.com/torvalds/linux/blob/v7.1-rc4/net/bpf/test_run.c#L695-L732
-    Ok(())
+    Ok(unsafe { attr.test }.retval)
 }
 
 /// Introduced in kernel v4.13.

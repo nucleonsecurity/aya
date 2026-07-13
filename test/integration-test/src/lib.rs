@@ -53,6 +53,7 @@ bpf_file!(
     CPU_MAP => "cpu_map",
     DEV_MAP => "dev_map",
     FEXIT => "fexit",
+    FMOD_RET => "fmod_ret",
     HASH_MAP => "hash_map",
     KPROBE => "kprobe",
     LINEAR_DATA_STRUCTURES => "linear_data_structures",

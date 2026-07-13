@@ -34,6 +34,7 @@ mod cgrp_storage;
 mod elf;
 mod feature_probe;
 mod fexit;
+mod fmod_ret;
 mod hash_map;
 mod info;
 mod inode_storage;

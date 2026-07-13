@@ -12,6 +12,7 @@ mod cgroup_sysctl;
 mod fentry;
 mod fexit;
 mod flow_dissector;
+mod fmod_ret;
 mod kprobe;
 mod lsm;
 mod lsm_cgroup;
@@ -40,6 +41,7 @@ use cgroup_sysctl::CgroupSysctl;
 use fentry::FEntry;
 use fexit::FExit;
 use flow_dissector::FlowDissector;
+use fmod_ret::FModRet;
 use kprobe::{KProbe, KProbeKind};
 use lsm::Lsm;
 use lsm_cgroup::LsmCgroup;
@@ -556,6 +558,37 @@ pub fn socket_filter(attrs: TokenStream, item: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn fentry(attrs: TokenStream, item: TokenStream) -> TokenStream {
     match FEntry::parse(attrs.into(), item.into()) {
+        Ok(prog) => prog.expand(),
+        Err(err) => err.into_compile_error(),
+    }
+    .into()
+}
+
+/// Marks a function as an `fmod_ret` eBPF program that can modify the return
+/// value of functions inside the kernel.
+///
+/// The value returned by the program replaces the target function's return
+/// value, so a non-zero value overrides its result. The target must be
+/// registered for return modification, i.e. a function marked
+/// `ALLOW_ERROR_INJECTION`.
+///
+/// The minimum kernel version required to use this feature is 5.5.
+///
+/// # Examples
+///
+/// ```no_run
+/// use aya_ebpf::{cty::c_int, macros::fmod_ret, programs::FEntryContext};
+///
+/// // Inject a slab allocation failure: the non-zero value returned here
+/// // replaces should_failslab's return value, forcing the allocation to fail.
+/// #[fmod_ret(function = "should_failslab")]
+/// pub fn should_failslab(_ctx: FEntryContext) -> c_int {
+///     -12 // -ENOMEM
+/// }
+/// ```
+#[proc_macro_attribute]
+pub fn fmod_ret(attrs: TokenStream, item: TokenStream) -> TokenStream {
+    match FModRet::parse(attrs.into(), item.into()) {
         Ok(prog) => prog.expand(),
         Err(err) => err.into_compile_error(),
     }
